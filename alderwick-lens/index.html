@@ -224,7 +224,16 @@ function hostListen(){if(es)es.close();es=new EventSource('/api/events?role=phon
  es.addEventListener('vote',ev=>{onVoteDoc(JSON.parse(ev.data))});
  es.addEventListener('haptic',ev=>{try{onHapticDoc(JSON.parse(ev.data))}catch(e){}});
  es.onerror=()=>{status('reconnecting…',true)};es.onopen=()=>{status('connected')}}
-function join(){if(viaPeer)peerConnect();else hostJoin()}
+function join(){if(viaPeer)peerConnect();else if(location.protocol==='https:')showJoinCard();else hostJoin()}
+function showJoinCard(){status('waiting for the join code…');
+ if($('joincard'))return;
+ const card=document.createElement('div');card.className='obj';card.id='joincard';
+ card.innerHTML='<small>JOIN THE CASE</small><b>Enter the code shown under the QR on the TV</b><p class="muted" style="margin:8px 0 0">It starts with cbald- . You can also paste the whole join link.</p><input id="joincode" placeholder="cbald-…" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" style="width:100%;box-sizing:border-box;margin-top:10px;padding:13px;font:14px Courier New,monospace;background:#101725;border:1px solid var(--line);border-radius:8px;color:var(--cream)"><button class="cta" id="joinbtn">JOIN</button>';
+ const main=document.querySelector('main');main.insertBefore(card,main.firstChild);
+ const go=()=>{let v=$('joincode').value.trim();const m=v.match(/[?&]s=([a-zA-Z0-9_-]+)/);if(m)v=m[1];v=v.replace(/[^a-zA-Z0-9_-]/g,'');
+  if(!v){status('Enter the code from the TV first.',true);return}
+  const keep=new URLSearchParams(location.search);keep.set('s',v);location.search='?'+keep.toString()};
+ $('joinbtn').onclick=go;$('joincode').addEventListener('keydown',e=>{if(e.key==='Enter')go()});$('joincode').focus()}
 function act(kind,payload){
  if(viaPeer){if(pConn&&pConn.open){try{pConn.send({t:'action',kind:kind,payload:payload||{}})}catch(e){status('action failed — reconnecting…',true)}}else{status('not connected — reconnecting…',true);pAttempt=0;peerConnect()}return}
  api('/api/action',{deviceId:deviceId,role:'phone',kind:kind,payload:payload||{}}).catch(()=>status('action failed — reconnecting…',true))}
